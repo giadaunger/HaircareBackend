@@ -9,9 +9,10 @@ class HaircareProduct(Base):
     __tablename__ = "haircare_products"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_name: Mapped[str] = mapped_column(String(100), unique=True)
+    company: Mapped[str] = mapped_column(String(100))
     product_img: Mapped[str] = mapped_column(String(255))
     product_type: Mapped[str] = mapped_column(String(50)) 
-    company: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(String(5000))
     
     ingredients: Mapped[list["ProductIngredient"]] = relationship(back_populates="product")
 
@@ -22,13 +23,13 @@ class HaircareProduct(Base):
 class HaircareIngredient(Base):
     __tablename__ = "haircare_ingredients"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True)
+    ingredient: Mapped[str] = mapped_column(String(100), unique=True)
     
     products: Mapped[list["ProductIngredient"]] = relationship(back_populates="ingredient")
     focus_areas: Mapped[list["IngredientFocusArea"]] = relationship(back_populates="ingredient")
 
     def __repr__(self):
-        return f"<HaircareIngredient={self.name}>"
+        return f"<HaircareIngredient={self.ingredient}>"
 
 
 class FocusArea(Base):
