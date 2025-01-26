@@ -3,5 +3,6 @@ venv
 ingredients_list.txt
 add_focus_areas.py
 add_products.py
+add_hairporosity.py
 utils/debug.py
 utils/ingredients_list.py

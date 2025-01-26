@@ -1,5 +1,5 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, Text
+from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, Text, Boolean
 
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -27,6 +27,7 @@ class HaircareIngredient(Base):
     
     products: Mapped[list["ProductIngredient"]] = relationship(back_populates="ingredient")
     focus_areas: Mapped[list["IngredientFocusArea"]] = relationship(back_populates="ingredient")
+    porosity_associations: Mapped[list["IngredientPorosity"]] = relationship(back_populates="ingredient")
 
     def __repr__(self):
         return f"<HaircareIngredient={self.ingredient}>"
@@ -41,6 +42,27 @@ class FocusArea(Base):
 
     def __repr__(self):
         return f"<FocusArea={self.name}>"
+    
+
+class IngredientPorosity(Base):
+    __tablename__ = "ingredient_porosity"
+
+    ingredient_id: Mapped[int] = mapped_column(ForeignKey("haircare_ingredients.id"), primary_key=True)
+    porosity_id: Mapped[int] = mapped_column(ForeignKey("hair_porosity.id"), primary_key=True)
+    suitability: Mapped[bool] = mapped_column(Boolean, nullable=False)  # True = suitable, False = not_suitable
+
+    ingredient: Mapped["HaircareIngredient"] = relationship(back_populates="porosity_associations")
+    porosity: Mapped["HairPorosity"] = relationship(back_populates="ingredients")
+
+    
+
+class HairPorosity(Base):
+    __tablename__ = "hair_porosity"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(20), unique=True)  
+
+    ingredients: Mapped[list["IngredientPorosity"]] = relationship(back_populates="porosity")
 
 
 class ProductIngredient(Base):
