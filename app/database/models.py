@@ -1,5 +1,5 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, Text
 
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -23,7 +23,7 @@ class HaircareProduct(Base):
 class HaircareIngredient(Base):
     __tablename__ = "haircare_ingredients"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    ingredient: Mapped[str] = mapped_column(String(100), unique=True)
+    ingredient: Mapped[str] = mapped_column(Text, unique=True)
     
     products: Mapped[list["ProductIngredient"]] = relationship(back_populates="ingredient")
     focus_areas: Mapped[list["IngredientFocusArea"]] = relationship(back_populates="ingredient")

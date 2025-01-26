@@ -1,2 +1,7 @@
 venv
 .env
+ingredients_list.txt
+add_focus_areas.py
+add_products.py
+utils/debug.py
+utils/ingredients_list.py
