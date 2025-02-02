@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from app.db_setup import get_db, init_db
 from app.database.schemas import BaseModel
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import select, update, delete, insert, and_, or_, distinct, text
+from sqlalchemy import select, update, delete, insert, and_, or_, distinct, text, case
 from sqlalchemy.sql.expression import func
 from typing import Dict, List
 from app.database.models import ProductIngredient, HaircareIngredient, HaircareProduct, HairPorosity, IngredientPorosity, IngredientFocusArea, FocusArea 
@@ -62,7 +62,6 @@ async def get_recommendations(
 ):
     recommendations = {}
     
-    # Hitta porosity ID
     porosity = db.query(HairPorosity).filter(
         func.lower(HairPorosity.name) == func.lower(request.hair_porosity)
     ).first()
@@ -70,9 +69,7 @@ async def get_recommendations(
     if not porosity:
         raise HTTPException(status_code=400, detail="Invalid hair porosity")
 
-    # För varje produkt-typ och fokusområde
     for product_type, focus_area in request.product_focus.items():
-        # Hitta focus area ID
         focus_area_record = db.query(FocusArea).filter(
             func.lower(FocusArea.name) == func.lower(focus_area)
         ).first()
@@ -80,8 +77,8 @@ async def get_recommendations(
         if not focus_area_record:
             continue
 
-        # 1. Hitta ingredienser som är olämpliga för hårets porositet
-        unsuitable_ingredients = (
+        # 1. Hitta inkompatibla ingredienser för porositeten
+        incompatible_ingredients = (
             db.query(HaircareIngredient.id)
             .join(IngredientPorosity)
             .filter(
@@ -90,41 +87,40 @@ async def get_recommendations(
             )
         )
 
-        # 2. Hitta ingredienser som är kopplade till fokusområdet
+        # 2. Hitta ingredienser för fokusområdet (för ranking senare)
         focus_ingredients = (
             db.query(HaircareIngredient.id)
             .join(IngredientFocusArea)
             .filter(IngredientFocusArea.focus_area_id == focus_area_record.id)
         )
 
-        # 3. Hitta produkter som:
-        # - innehåller fokuserade ingredienser
-        # - INTE innehåller olämpliga ingredienser (om några finns)
-        recommended_products_query = (
+        # 3. Börja med alla produkter av rätt typ
+        product_query = (
             db.query(
                 HaircareProduct,
-                func.count(distinct(ProductIngredient.ingredient_id)).label('matching_ingredients')
+                func.count(distinct(case(
+                    (ProductIngredient.ingredient_id.in_(focus_ingredients), ProductIngredient.ingredient_id),
+                    else_=None
+                ))).label('matching_ingredients')
             )
             .join(ProductIngredient)
-            .filter(
-                HaircareProduct.product_type == product_type,
-                ProductIngredient.ingredient_id.in_(focus_ingredients)
-            )
+            .filter(HaircareProduct.product_type == product_type)
+            .group_by(HaircareProduct.id)
         )
 
-        # Lägg till filter för olämpliga ingredienser endast om det finns några
-        if unsuitable_ingredients.count() > 0:
-            recommended_products_query = recommended_products_query.filter(
+        # 4. Filtrera bort produkter med inkompatibla ingredienser
+        if incompatible_ingredients.count() > 0:
+            product_query = product_query.filter(
                 ~HaircareProduct.id.in_(
                     db.query(ProductIngredient.product_id)
-                    .filter(ProductIngredient.ingredient_id.in_(unsuitable_ingredients))
+                    .filter(ProductIngredient.ingredient_id.in_(incompatible_ingredients))
                 )
             )
 
+        # 5. Sortera efter antal matchande fokus-ingredienser
         recommended_products = (
-            recommended_products_query
-            .group_by(HaircareProduct.id)
-            .order_by(func.count(distinct(ProductIngredient.ingredient_id)).desc())
+            product_query
+            .order_by(text('matching_ingredients DESC'))
             .limit(4)
             .all()
         )
@@ -132,7 +128,6 @@ async def get_recommendations(
         if not recommended_products:
             continue
 
-        # Första produkten blir huvudrekommendationen
         main_product = recommended_products[0][0]
         similar_products = [p[0] for p in recommended_products[1:]]
 
