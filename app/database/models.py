@@ -10,6 +10,7 @@ class HaircareProduct(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_name: Mapped[str] = mapped_column(String(100), unique=True)
     company: Mapped[str] = mapped_column(String(100))
+    price: Mapped[int] = mapped_column(Integer, nullable=True)
     product_img: Mapped[str] = mapped_column(String(255))
     product_type: Mapped[str] = mapped_column(String(50)) 
     description: Mapped[str] = mapped_column(String(5000))

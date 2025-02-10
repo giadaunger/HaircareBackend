@@ -70,12 +70,15 @@ async def get_recommendations(
         raise HTTPException(status_code=400, detail="Invalid hair porosity")
 
     for product_type, focus_area in request.product_focus.items():
+        print(f"\n=== Processing {product_type} with {focus_area} ===")
         focus_area_record = db.query(FocusArea).filter(
             func.lower(FocusArea.name) == func.lower(focus_area)
         ).first()
         
         if not focus_area_record:
+            print(f"Focus area not found: {focus_area}")
             continue
+        print(f"Found focus area: {focus_area_record.name}")
 
         # 1. Hitta inkompatibla ingredienser för porositeten
         incompatible_ingredients = (
@@ -93,6 +96,25 @@ async def get_recommendations(
             .join(IngredientFocusArea)
             .filter(IngredientFocusArea.focus_area_id == focus_area_record.id)
         )
+        print(f"Number of focus ingredients: {focus_ingredients.count()}")
+        
+        products_with_focus = (
+        db.query(HaircareProduct)
+        .join(ProductIngredient)
+        .filter(
+            HaircareProduct.product_type == product_type,
+            ProductIngredient.ingredient_id.in_(focus_ingredients)
+        )
+        .distinct()
+        .all()
+        )
+        print(f"Products with focus ingredients: {len(products_with_focus)}")
+        for p in products_with_focus:
+            print(f"- {p.product_name}")
+
+        products = db.query(HaircareProduct).filter(
+            HaircareProduct.product_type == product_type).all()
+        print(f"Total number of {product_type} products in database: {len(products)}")
 
         # 3. Hämta produkter som har ingredienser för fokusområdet
         product_query = (
@@ -116,6 +138,12 @@ async def get_recommendations(
             )
             .group_by(HaircareProduct.id)
         )
+        print(f"Number of incompatible ingredients: {incompatible_ingredients.count()}")
+
+        initial_products = product_query.all()
+        print(f"Products before incompatibility filter: {len(initial_products)}")
+        for p in initial_products:
+            print(f"- {p[0].product_name} (matching ingredients: {p[1]})")
 
         # 4. Filtrera bort produkter med inkompatibla ingredienser
         if incompatible_ingredients.count() > 0:
@@ -166,6 +194,10 @@ async def get_recommendations(
             status_code=404, 
             detail="No recommendations found for the given criteria"
         )
+    
+    print(f"Final recommended products: {len(recommended_products)}")
+    for p in recommended_products:
+        print(f"- {p[0].product_name} (matching ingredients: {p[1]})")
 
     return FullRecommendations(recommendations=recommendations)
 

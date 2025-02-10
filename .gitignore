@@ -6,3 +6,8 @@ add_products.py
 add_hairporosity.py
 utils/debug.py
 utils/ingredients_list.py
+utils/focus_area_list.py
+utils/products_list.py
+ingredients_without_focus.txt
+current_mappings.txt
+products_list.txt
