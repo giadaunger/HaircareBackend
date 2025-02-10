@@ -6,6 +6,7 @@ from app.database.schemas import BaseModel
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import select, update, delete, insert, and_, or_, distinct, text, case
 from sqlalchemy.sql.expression import func
+from fastapi.staticfiles import StaticFiles
 from typing import Dict, List
 from app.database.models import ProductIngredient, HaircareIngredient, HaircareProduct, HairPorosity, IngredientPorosity, IngredientFocusArea, FocusArea 
 
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
   yield
 
 app =  FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Middleware
 origin = [
