@@ -8,7 +8,7 @@ from sqlalchemy import select, update, delete, insert, and_, or_, distinct, text
 from sqlalchemy.sql.expression import func
 from fastapi.staticfiles import StaticFiles
 from typing import Dict, List
-from app.database.models import ProductIngredient, HaircareIngredient, HaircareProduct, HairPorosity, IngredientPorosity, IngredientFocusArea, FocusArea 
+from app.database.models import ProductIngredient, HaircareIngredient, HaircareProduct, HairPorosity, IngredientPorosity, IngredientFocusArea, FocusArea, HaircareProduct
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,6 +49,7 @@ class ProductResponse(BaseModel):
     product_img: str
     product_type: str
     description: str
+    price: int
 
 class RecommendationResponse(BaseModel):
     main_recommendation: ProductResponse
@@ -177,7 +178,8 @@ async def get_recommendations(
                 company=main_product.company,
                 product_img=main_product.product_img,
                 product_type=main_product.product_type,
-                description=main_product.description
+                description=main_product.description,
+                price=main_product.price
             ),
             similar_products=[
                 ProductResponse(
@@ -186,7 +188,8 @@ async def get_recommendations(
                     company=p.company,
                     product_img=p.product_img,
                     product_type=p.product_type,
-                    description=p.description
+                    description=p.description,
+                    price=p.price
                 ) for p in similar_products
             ]
         )
@@ -218,7 +221,16 @@ async def get_product(product_id: int, db: Session = Depends(get_db)):
         "product_type": product.product_type,
         "description": product.description,
         "product_img": product.product_img,
-        "ingredients": product.ingredients
+        "ingredients": [
+            {
+                "id": ingredient.id,
+                "ingredient_id": ingredient.ingredient_id,
+                "product_id": ingredient.product_id,
+                "ingredient_name": ingredient.ingredient.ingredient  # Add this line to get the ingredient name
+            }
+            for ingredient in product.ingredients
+        ],
+        "price": product.price
     }
 
 
@@ -315,8 +327,16 @@ async def get_product_recommendations(
                 "company": p[0].company,
                 "product_img": p[0].product_img,
                 "product_type": p[0].product_type,
-                "description": p[0].description
+                "description": p[0].description,
+                "price": p[0].price
             } 
             for p in recommended_products
         ]
     }
+
+@app.get("/product", status_code=200)
+def list_products(db: Session = Depends(get_db)):
+  products = db.scalars(select(HaircareProduct)).all()
+  if not products:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+  return products
